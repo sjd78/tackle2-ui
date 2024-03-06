@@ -1,0 +1,41 @@
+# See https://github.com/verdaccio/verdaccio/blob/5.x/conf/docker.yaml
+# https://verdaccio.org/docs/configuration
+
+storage: /verdaccio/storage/data
+plugins: /verdaccio/plugins
+
+web:
+  title: Verdaccio npm cache
+  login: false
+
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    algorithm: bcrypt
+    max_users: -1
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+
+packages:
+  "@*/*":
+    access: $all
+    publish: $authenticated
+    unpublish: $authenticated
+    proxy: npmjs
+
+  "**":
+    access: $all
+    publish: $authenticated
+    unpublish: $authenticated
+    proxy: npmjs
+
+server:
+  keepAliveTimeout: 60
+
+middlewares:
+  audit:
+    enabled: true
+
+log: { type: stdout, format: pretty, level: info }

@@ -1,0 +1,132 @@
+name: Multiple Architecture Image Build 2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "main"
+      - "release-*"
+    tags:
+      - "v*"
+
+concurrency:
+  group: image-build-2-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  tag: ${{ github.ref == 'refs/heads/main' && 'latest' || github.ref_name }}
+
+  # what is normally sent in as input
+  registry: "quay.io/sdickers"
+  image_name: "tackle2-ui"
+  containerfile: "./Dockerfile"
+  extra-args: "--ulimit nofile=4096:4096"
+
+  # pre_build_cmd: |
+  #   echo "registry=\"http://localhost:4873\"" >> .npmrc
+  # pre_build_cmd: |
+  #   echo "registry=https://npm.pkg.github.com" >> .npmrc
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    # setup a npm mirror server so multiple npm installs can share fetches
+    # services:
+    #   npm-mirror:
+    #     image: verdaccio/verdaccio:5
+    #     ports:
+    #       - 4873:4873
+
+    strategy:
+      matrix:
+        architecture:
+          - "amd64"
+          - "arm64"
+          - "ppc64le"
+          - "s390x"
+
+    steps:
+      - name: Maximize disk space
+        shell: bash
+        run: |
+          echo "Space before clearing:"
+          df . -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          echo "Space after clearing:"
+          df . -h
+
+      - name: Checkout
+        uses: actions/checkout@main
+
+      - name: Configure QEMU
+        uses: docker/setup-qemu-action@master
+        with:
+          platforms: all
+
+      - name: Image meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.registry }}/${{ env.image_name }}
+          tags: |
+            type=schedule
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha
+
+      - name: Run pre build command
+        shell: bash
+        run: "${{ env.pre_build_cmd }}"
+        if: "${{ env.pre_build_cmd != '' }}"
+
+      - name: Build Image
+        id: build
+        uses: redhat-actions/buildah-build@main
+        with:
+          image: ${{ env.image_name }}
+          tags: ${{ env.tag }}-${{ matrix.architecture }}
+          extra-args: "--no-cache --rm ${{ env.extra-args }}"
+          archs: ${{ matrix.architecture }}
+          labels: ${{ steps.meta.outputs.labels }}
+          containerfiles: ${{ env.containerfile }}
+
+      - name: Push To Quay
+        uses: redhat-actions/push-to-registry@main
+        id: push
+        with:
+          image: ${{ steps.build.outputs.image }}
+          tags: ${{ env.tag }}-${{ matrix.architecture }}
+          username: ${{ secrets.QUAY_PUBLISH_ROBOT }}
+          password: ${{ secrets.QUAY_PUBLISH_TOKEN }}
+          registry: ${{ env.registry }}
+
+  manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create manifest
+        shell: bash
+        run: |
+          podman manifest create "${{ env.registry }}/${{ env.image_name }}:${{ env.tag }}"
+          for arch in $(echo '${{ env.architectures }}' | jq -r '.[]'); do
+            podman manifest add \
+              "${{ env.registry }}/${{ env.image_name }}:${{ env.tag }}" \
+              "${{ env.registry }}/${{ env.image_name }}:${{ env.tag }}-${arch}"
+          done
+
+      - name: Push To Quay
+        uses: redhat-actions/push-to-registry@main
+        id: push
+        with:
+          image: ${{ env.image_name }}
+          tags: ${{ env.tag }}
+          username: ${{ secrets.QUAY_PUBLISH_ROBOT }}
+          password: ${{ secrets.QUAY_PUBLISH_TOKEN }}
+          registry: ${{ env.registry }}

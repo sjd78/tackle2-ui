@@ -126,7 +126,10 @@ export const Identities: React.FC = () => {
       title: "Type",
       type: FilterType.select,
       placeholderText: "Filter by type...",
-      selectOptions: typeOptions,
+      selectOptions: typeOptions.map(({ key, value }) => ({
+        value: key,
+        label: value,
+      })),
       getItemValue: (item) => {
         return item.kind || "";
       },
@@ -327,6 +330,7 @@ export const Identities: React.FC = () => {
                   what: "credentials",
                 })}
                 description={t("composed.noDataStateBody", {
+                  how: t("terms.create"),
                   what: "credential",
                 })}
               />

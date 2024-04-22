@@ -21,11 +21,11 @@ jobs:
       - name: Checkout Push to Registry action
         uses: konveyor/release-tools/build-push-quay@main
         with:
-          architectures: "amd64, arm64, ppc64le, s390x"
+          architectures: "amd64, arm64"
           containerfile: "./Dockerfile"
           extra-args: "--ulimit nofile=4096:4096"
           image_name: "tackle2-ui"
-          image_namespace: "konveyor"
+          image_namespace: "sdickers"
           image_registry: "quay.io"
           quay_publish_robot: ${{ secrets.QUAY_PUBLISH_ROBOT }}
           quay_publish_token: ${{ secrets.QUAY_PUBLISH_TOKEN }}

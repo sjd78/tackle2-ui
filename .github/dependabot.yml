@@ -7,3 +7,8 @@ updates:
     allow:
       - dependency-name: "@patternfly/*"
         dependency-type: "direct"
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: daily

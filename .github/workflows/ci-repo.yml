@@ -5,10 +5,16 @@ on:
     branches:
       - "main"
       - "release-*"
+
   pull_request:
     branches:
       - "main"
       - "release-*"
+
+  schedule:
+    - cron: "35 5 * * *" # every day @ 5:35am UTC
+
+  workflow_dispatch:
 
 jobs:
   unit-test-lookup-image:
@@ -16,7 +22,14 @@ jobs:
     outputs:
       builder-image: ${{ steps.grepBuilder.outputs.builder }}
     steps:
+      - name: Log the event
+        env:
+          GH: ${{ toJson(github) }}
+        run: |
+          echo "$GH" | jq "."
+
       - uses: actions/checkout@v4
+
       - name: Lookup builder image from the project's Dockerfile
         id: grepBuilder
         run: |
@@ -54,14 +67,21 @@ jobs:
       - name: Test
         run: npm run test -- --coverage --watchAll=false
 
+      # - name: install gh?
+      #   run: |
+      #     dnf -y config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+      #     dnf -y install gh
+
       - name: Upload to codecov (client)
+        if: ${{ github.event.pull_request }}
         uses: codecov/codecov-action@v4
         with:
           flags: client
-          directory: ./*/coverage
+          directory: ./client/coverage
 
-      - name: Upload to codecov (server)
-        uses: codecov/codecov-action@v4
-        with:
-          flags: server
-          directory: ./*/coverage
+      # ** Disabled since there are no tests on server or common **
+      # - name: Upload to codecov (server)
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     flags: server
+      #     directory: ./server/coverage

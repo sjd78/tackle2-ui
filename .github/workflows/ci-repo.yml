@@ -17,10 +17,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  unit-test-lookup-image:
+  unit-test-lookups:
     runs-on: ubuntu-latest
     outputs:
       builder-image: ${{ steps.grepBuilder.outputs.builder }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -33,10 +34,10 @@ jobs:
 
   unit-test:
     runs-on: ubuntu-latest
-    needs: unit-test-lookup-image
+    needs: unit-test-lookups
 
     # Use the same container as the Dockerfile's "FROM * as builder"
-    container: ${{ needs.unit-test-lookup-image.outputs.builder-image }}
+    container: ${{ needs.unit-test-lookups.outputs.builder-image }}
 
     steps:
       - uses: actions/checkout@v4

@@ -17,10 +17,10 @@ jobs:
   image-build:
     uses: konveyor/release-tools/.github/workflows/build-push-images.yaml@main
     with:
-      registry: "quay.io/konveyor"
+      registry: "quay.io/sdickers"
       image_name: "tackle2-ui"
       containerfile: "./Dockerfile"
-      architectures: '[ "amd64", "arm64", "ppc64le", "s390x" ]'
+      architectures: '[ "amd64", "arm64" ]'
       # 2023-03-19: currently needed for npm@10
       extra-args: "--ulimit nofile=4096:4096"
     secrets:

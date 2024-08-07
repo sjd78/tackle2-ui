@@ -1,4 +1,4 @@
-name: Multiple Architecture Image Build 2
+name: Image Build 2
 
 on:
   workflow_dispatch:
@@ -14,12 +14,16 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  tag: ${{ github.ref == 'refs/heads/main' && 'latest' || github.ref_name }}
+  tag: ${{ github.ref == 'refs/heads/main' && 'latest1' || github.ref_name }}
 
   # what is normally sent in as input
   registry: "quay.io/sdickers"
   image_name: "tackle2-ui"
   containerfile: "./Dockerfile"
+  context: "."
+
+  architectures: '[ "amd64", "arm64" ]'
+
   extra-args: "--ulimit nofile=4096:4096"
 
   # pre_build_cmd: |
@@ -32,19 +36,21 @@ jobs:
     runs-on: ubuntu-latest
 
     # setup a npm mirror server so multiple npm installs can share fetches
-    # services:
-    #   npm-mirror:
-    #     image: verdaccio/verdaccio:5
-    #     ports:
-    #       - 4873:4873
+    services:
+      npm-mirror:
+        image: verdaccio/verdaccio:5
+        ports:
+          - 4873:4873
 
     strategy:
       matrix:
-        architecture:
-          - "amd64"
-          - "arm64"
-          - "ppc64le"
-          - "s390x"
+        architecture: # can't use `env` here.. ${{ fromJson(env.architectures) }}
+          - amd64
+          - arm64
+
+    # concurrency:
+    #   group: image-build-2-${{ github.ref }}-${{ matrix.architecture }}
+    #   cancel-in-progress: true
 
     steps:
       - name: Maximize disk space
@@ -60,12 +66,17 @@ jobs:
           df . -h
 
       - name: Checkout
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
 
-      - name: Configure QEMU
+      - name: Proxy npm registry to the "npm-mirror" service
+        run: |
+          echo "registry=\"http://npm-mirror:4873\"" >> .npmrc
+
+      - name: Setup QEMU to be able to build on ${{ matrix.architecture }}
+        if: ${{ matrix.architecture != 'amd64' }}
         uses: docker/setup-qemu-action@master
         with:
-          platforms: all
+          platforms: ${{ matrix.architecture }}
 
       - name: Image meta
         id: meta
@@ -81,10 +92,10 @@ jobs:
             type=ref,event=pr
             type=sha
 
-      - name: Run pre build command
-        shell: bash
-        run: "${{ env.pre_build_cmd }}"
-        if: "${{ env.pre_build_cmd != '' }}"
+      # - name: Run pre build command
+      #   shell: bash
+      #   run: "${{ env.pre_build_cmd }}"
+      #   if: "${{ env.pre_build_cmd != '' }}"
 
       - name: Build Image
         id: build
@@ -96,6 +107,7 @@ jobs:
           archs: ${{ matrix.architecture }}
           labels: ${{ steps.meta.outputs.labels }}
           containerfiles: ${{ env.containerfile }}
+          context: ${{ env.context }}
 
       - name: Push To Quay
         uses: redhat-actions/push-to-registry@main

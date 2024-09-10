@@ -177,3 +177,5 @@ for more information on how to get started.
 # Code of Conduct
 
 Refer to Konveyor's [Code of Conduct page](https://github.com/konveyor/community/blob/main/CODE_OF_CONDUCT.md)
+
+This is a change to README.md that should be ignored by CI

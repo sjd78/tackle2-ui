@@ -39,6 +39,8 @@ if (ENV.NODE_ENV === "development") {
   renderApp();
 }
 
+// This is a source file change and it should be unit tested
+
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals

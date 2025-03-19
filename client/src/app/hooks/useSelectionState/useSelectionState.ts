@@ -30,60 +30,58 @@ export const useSelectionState = <T>({
   initialSelected = [],
   isEqual = (a, b) => a === b,
 }: ISelectionStateArgs<T>): ISelectionState<T> => {
-  const [selectedSet, setSelectedSet] = React.useState<T[]>(
+  const [selectedItems, setSelectedItems] = React.useState<T[]>(() =>
     doSelect(isEqual, items, initialSelected)
   );
 
+  React.useEffect(() => {
+    setSelectedItems((si) => doSelect(isEqual, items, si));
+    console.log("useEffect -- items");
+  }, [isEqual, items]);
+
   const isItemSelected = React.useCallback(
-    (item: T) => selectedSet.some((i) => isEqual(item, i)),
-    [isEqual, selectedSet]
+    (item: T) => selectedItems.some((i) => isEqual(item, i)),
+    [isEqual, selectedItems]
   );
 
   const selectItems = React.useCallback(
     (itemsSubset: T[], isSelecting: boolean) => {
       const verifiedItemsSubset = doSelect(isEqual, items, itemsSubset);
-      const selectedNotInItemsSubset = selectedSet.filter(
+      const selectedNotInItemsSubset = selectedItems.filter(
         (selected) =>
           !verifiedItemsSubset.some((item) => isEqual(selected, item))
       );
-      if (isSelecting) {
-        setSelectedSet([...selectedNotInItemsSubset, ...verifiedItemsSubset]);
-      } else {
-        setSelectedSet(selectedNotInItemsSubset);
-      }
+      const filtered = doSelect(
+        isEqual,
+        items,
+        isSelecting
+          ? [...selectedNotInItemsSubset, ...verifiedItemsSubset]
+          : selectedNotInItemsSubset
+      );
+      setSelectedItems(filtered);
     },
-    [isEqual, items, selectedSet]
+    [isEqual, items, selectedItems]
   );
 
   const selectOnly = React.useCallback(
     (toSelect: T[]) => {
       const filtered = doSelect(isEqual, items, toSelect);
-      setSelectedSet(filtered);
+      setSelectedItems(filtered);
     },
     [isEqual, items]
   );
 
   const selectAll = React.useCallback(
-    (isSelecting) => setSelectedSet(isSelecting ? items : []),
+    (isSelecting) => setSelectedItems(isSelecting ? items : []),
     [items]
   );
 
   const areAllSelected = React.useMemo(() => {
     return (
-      selectedSet.length === items.length &&
-      selectedSet.every((si) => items.some((i) => isEqual(si, i)))
+      selectedItems.length === items.length &&
+      selectedItems.every((si) => items.some((i) => isEqual(si, i)))
     );
-  }, [selectedSet, items, isEqual]);
-
-  const selectedItems = React.useMemo(() => {
-    if (selectedSet.length === 0) {
-      return [];
-    }
-    if (areAllSelected) {
-      return items;
-    }
-    return items.filter(isItemSelected);
-  }, [areAllSelected, isItemSelected, items, selectedSet]);
+  }, [isEqual, items, selectedItems]);
 
   return {
     selectedItems,

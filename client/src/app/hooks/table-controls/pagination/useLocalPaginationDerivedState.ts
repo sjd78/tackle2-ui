@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { IPaginationState } from "./usePaginationState";
 
 /**
@@ -23,14 +24,14 @@ export interface ILocalPaginationDerivedStateArgs<TItem> {
  * - For local/client-computed tables only. Performs the actual pagination logic, which is done on the server for server-computed tables.
  * - "source of truth" (persisted) state and "derived state" are kept separate to prevent out-of-sync duplicated state.
  */
-export const getLocalPaginationDerivedState = <TItem>({
+export const useLocalPaginationDerivedState = <TItem>({
   items,
   paginationState: { pageNumber, itemsPerPage },
 }: ILocalPaginationDerivedStateArgs<TItem>) => {
-  const pageStartIndex = (pageNumber - 1) * itemsPerPage;
-  const currentPageItems = items.slice(
-    pageStartIndex,
-    pageStartIndex + itemsPerPage
-  );
+  const currentPageItems = useMemo(() => {
+    const pageStartIndex = (pageNumber - 1) * itemsPerPage;
+    return items.slice(pageStartIndex, pageStartIndex + itemsPerPage);
+  }, [items, itemsPerPage, pageNumber]);
+
   return { currentPageItems };
 };

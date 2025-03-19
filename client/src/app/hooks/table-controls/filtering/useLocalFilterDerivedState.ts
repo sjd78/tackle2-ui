@@ -4,6 +4,7 @@ import {
   getFilterLogicOperator,
 } from "@app/components/FilterToolbar";
 import { IFilterState } from "./useFilterState";
+import { useMemo } from "react";
 
 /**
  * Args for getLocalFilterDerivedState
@@ -35,7 +36,7 @@ export interface ILocalFilterDerivedStateArgs<
  * - For local/client-computed tables only. Performs the actual filtering logic, which is done on the server for server-computed tables.
  * - "source of truth" (persisted) state and "derived state" are kept separate to prevent out-of-sync duplicated state.
  */
-export const getLocalFilterDerivedState = <
+export const useLocalFilterDerivedState = <
   TItem,
   TFilterCategoryKey extends string,
 >({
@@ -43,22 +44,28 @@ export const getLocalFilterDerivedState = <
   filterCategories = [],
   filterState: { filterValues },
 }: ILocalFilterDerivedStateArgs<TItem, TFilterCategoryKey>) => {
-  const filteredItems = items.filter((item) =>
-    Object.entries<FilterValue>(filterValues).every(([filterKey, values]) => {
-      if (!values || values.length === 0) return true;
-      const filterCategory = filterCategories.find(
-        (category) => category.categoryKey === filterKey
-      );
-      const defaultMatcher = (filterValue: string, item: TItem) =>
-        legacyMatcher(
-          filterValue,
-          filterCategory?.getItemValue?.(item) ?? (item as any)[filterKey]
-        );
-      const matcher = filterCategory?.matcher ?? defaultMatcher;
-      const logicOperator =
-        getFilterLogicOperator(filterCategory) === "AND" ? "every" : "some";
-      return values[logicOperator]((filterValue) => matcher(filterValue, item));
-    })
+  const filteredItems = useMemo(
+    () =>
+      items.filter((item) =>
+        Object.entries<FilterValue>(filterValues).every(
+          ([filterKey, values]) => {
+            if (!values || values.length === 0) return true;
+            const filterCategory = filterCategories.find(
+              (category) => category.categoryKey === filterKey
+            );
+            const defaultMatcher = (filterValue: string, item: TItem) =>
+              legacyMatcher(
+                filterValue,
+                filterCategory?.getItemValue?.(item) ?? (item as any)[filterKey]
+              );
+            const matcher = filterCategory?.matcher ?? defaultMatcher;
+            return getFilterLogicOperator(filterCategory) === "AND"
+              ? values.every((value) => matcher(value, item))
+              : values.some((value) => matcher(value, item));
+          }
+        )
+      ),
+    [items, filterCategories, filterValues]
   );
 
   return { filteredItems };

@@ -1,6 +1,6 @@
-import { getLocalFilterDerivedState } from "./filtering";
-import { getLocalSortDerivedState } from "./sorting";
-import { getLocalPaginationDerivedState } from "./pagination";
+import { useLocalFilterDerivedState } from "./filtering";
+import { useLocalSortDerivedState } from "./sorting";
+import { useLocalPaginationDerivedState } from "./pagination";
 import {
   ITableControlLocalDerivedStateArgs,
   ITableControlDerivedState,
@@ -13,7 +13,7 @@ import {
  * - Takes "source of truth" state for all features and additional args.
  * @see useLocalTableControls
  */
-export const getLocalTableControlDerivedState = <
+export const useLocalTableControlDerivedState = <
   TItem,
   TColumnKey extends string,
   TSortableColumnKey extends TColumnKey,
@@ -35,19 +35,20 @@ export const getLocalTableControlDerivedState = <
     >
 ): ITableControlDerivedState<TItem> => {
   const { items, isPaginationEnabled = true } = args;
-  const { filteredItems } = getLocalFilterDerivedState({
+  const { filteredItems } = useLocalFilterDerivedState({
     ...args,
     items,
   });
-  const { sortedItems } = getLocalSortDerivedState({
+  const { sortedItems } = useLocalSortDerivedState({
     ...args,
     items: filteredItems,
   });
-  const { currentPageItems } = getLocalPaginationDerivedState({
+  const { currentPageItems } = useLocalPaginationDerivedState({
     ...args,
     items: sortedItems,
   });
   return {
+    // TODO: Could provide access to full item set, filtered set, sorted set, and paged set
     totalItemCount: filteredItems.length,
     currentPageItems: isPaginationEnabled ? currentPageItems : sortedItems,
   };

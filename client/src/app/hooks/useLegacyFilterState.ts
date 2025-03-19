@@ -1,6 +1,6 @@
 import { IFilterValues, FilterCategory } from "@app/components/FilterToolbar";
 import {
-  getLocalFilterDerivedState,
+  useLocalFilterDerivedState,
   useFilterState,
 } from "./table-controls/filtering";
 
@@ -21,7 +21,7 @@ export interface IFilterStateHook<TItem, TFilterCategoryKey extends string> {
  *   See useFilterState in table-controls for the new version, which should probably be used instead of this everywhere eventually.
  *   See getLocalFilterDerivedState and useFilterPropHelpers for the pieces that were removed here.
  * @see useFilterState
- * @see getLocalFilterDerivedState
+ * @see useLocalFilterDerivedState
  * @see getFilterProps
  */
 export const useLegacyFilterState = <TItem, TFilterCategoryKey extends string>(
@@ -32,7 +32,7 @@ export const useLegacyFilterState = <TItem, TFilterCategoryKey extends string>(
     isFilterEnabled: true,
     filterCategories,
   });
-  const { filteredItems } = getLocalFilterDerivedState({
+  const { filteredItems } = useLocalFilterDerivedState({
     items,
     filterCategories,
     filterState: { filterValues, setFilterValues },

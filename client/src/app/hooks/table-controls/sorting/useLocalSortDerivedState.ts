@@ -1,6 +1,7 @@
 import i18n from "@app/i18n";
 import { ISortState } from "./useSortState";
 import { universalComparator } from "@app/utils/utils";
+import { useMemo } from "react";
 
 /**
  * Args for getLocalSortDerivedState
@@ -38,7 +39,7 @@ export interface ILocalSortDerivedStateArgs<
  * - For local/client-computed tables only. Performs the actual sorting logic, which is done on the server for server-computed tables.
  * - "source of truth" (persisted) state and "derived state" are kept separate to prevent out-of-sync duplicated state.
  */
-export const getLocalSortDerivedState = <
+export const useLocalSortDerivedState = <
   TItem,
   TSortableColumnKey extends string,
 >({
@@ -46,17 +47,24 @@ export const getLocalSortDerivedState = <
   getSortValues,
   sortState: { activeSort },
 }: ILocalSortDerivedStateArgs<TItem, TSortableColumnKey>) => {
-  if (!getSortValues || !activeSort) {
-    return { sortedItems: items };
-  }
-
-  let sortedItems = items;
-  sortedItems = [...items].sort((a: TItem, b: TItem) => {
-    const aValue = getSortValues(a)[activeSort.columnKey];
-    const bValue = getSortValues(b)[activeSort.columnKey];
-    const compareValue = universalComparator(aValue, bValue, i18n.language);
-    return activeSort.direction === "asc" ? compareValue : -compareValue;
-  });
+  const sortedItems = useMemo(
+    () =>
+      !getSortValues || !activeSort
+        ? items
+        : [...items].sort((a: TItem, b: TItem) => {
+            const aValue = getSortValues(a)[activeSort.columnKey];
+            const bValue = getSortValues(b)[activeSort.columnKey];
+            const compareValue = universalComparator(
+              aValue,
+              bValue,
+              i18n.language
+            );
+            return activeSort.direction === "asc"
+              ? compareValue
+              : -compareValue;
+          }),
+    [activeSort, getSortValues, items]
+  );
 
   return { sortedItems };
 };

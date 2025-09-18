@@ -1,11 +1,89 @@
-name: Nightly CI (repo level @main)
+name: Nightly CI (repo level @multiple branches)
+
+env:
+  DEFAULT_BRANCHES: "main,release-0.8,release-0.7"
 
 on:
   schedule:
     - cron: "35 5 * * *" # every day @ 5:35am UTC
 
   workflow_dispatch:
+    inputs:
+      branches:
+        description: "Comma-separated list of branches to test"
+        required: false
+        default: "main,release-0.8,release-0.7"
+        type: string
+
+permissions:
+  actions: write
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      branches: ${{ steps.set-branches.outputs.branches }}
+    env:
+      INPUT_BRANCHES: ${{ inputs.branches }}
+    steps:
+      - name: Set branch matrix
+        id: set-branches
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const isWorkflowDispatch = context.eventName === 'workflow_dispatch';
+            const inputBranches = process.env.INPUT_BRANCHES;
+            const defaultBranches = process.env.DEFAULT_BRANCHES;
+
+            const branches = isWorkflowDispatch && inputBranches
+              ? inputBranches : defaultBranches;
+
+            const branchArray = branches
+              .split(',')
+              .map(branch => branch.trim())
+              .filter(branch => branch.length > 0);
+
+            core.setOutput('branches', JSON.stringify(branchArray));
+            core.summary.addHeading('Branches to test');
+            core.summary.addList(branchArray);
+            core.summary.write();
+            console.log(`Will test branches: ${branches}`);
+
   nightly:
-    uses: ./.github/workflows/ci-repo.yml
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch: ${{ fromJson(needs.setup.outputs.branches) }}
+      fail-fast: false
+    steps:
+      - name: Trigger CI for ${{ matrix.branch }}
+        uses: actions/github-script@v8
+        with:
+          script: |
+            try {
+              // Check if the branch exists first
+              await github.rest.repos.getBranch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: '${{ matrix.branch }}',
+              });
+
+              // Branch exists, trigger the workflow
+              const result = await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'ci-repo.yml',
+                ref: '${{ matrix.branch }}',
+              });
+
+              console.log(`✅ Triggered CI workflow on branch: ${{ matrix.branch }}`);
+              console.log(`Workflow dispatch result:`, result.status);
+            } catch (error) {
+              if (error.status === 404) {
+                console.log(`⚠️ Branch '${{ matrix.branch }}' not found, skipping...`);
+              } else {
+                console.log(`❌ Error triggering workflow for branch '${{ matrix.branch }}':`, error.message);
+                throw error;
+              }
+            }

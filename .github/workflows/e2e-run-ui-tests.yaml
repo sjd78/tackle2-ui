@@ -100,7 +100,8 @@ jobs:
           ref: ${{ inputs.test_ref }}
           path: tackle2-ui
 
-      - run: ls -lF
+      - run: |
+          ls -lFRh
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
